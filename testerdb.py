@@ -53,7 +53,6 @@ while True:
 
     cur.execute("CREATE TABLE IF NOT EXISTS Accounts(Id TEXT PRIMARY KEY NOT NULL, Password TEXT, Name TEXT NOT NULL, Created NOT NULL, Batches, Results)")
     print("Welcome to VAST. ")
-    x = sha256sum('chuck')
 
     #examples for creating an account
     cur.execute("INSERT INTO Accounts (Id, Password, Name, Created)" +
