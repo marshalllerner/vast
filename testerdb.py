@@ -3,33 +3,61 @@
 
 import sqlite3 as lite
 import sys
+import socket
 import hashlib
+from threading import Thread
+from SocketServer import ThreadingMixIn
 
-cars = (
-    (1, 'Audi', 52642),
-    (2, 'Mercedes', 57127),
-    (3, 'Skoda', 9000),
-    (4, 'Volvo', 29000),
-    (5, 'Bentley', 350000),
-    (6, 'Hummer', 41400),
-    (7, 'Volkswagen', 21600)
-)
+TCP_IP = 'localhost'
+TCP_PORT = 9001
+BUFFER_SIZE = 1023
 
-def md5sum(t):
-    return hashlib.md5(t).hexdigest()
+class ClientThread(Thread):
 
-con = lite.connect('test.db')
+    def __init__(self,ip,port,sock):
+        Thread.__init__(self)
+        self.ip = ip
+        self.port = port
+        self.sock = sock
+        print " New thread started for "+ip+":"+str(port)
+
+    def run(self):
+        filename='mytext.txt'
+        f = open(filename,'rb')
+        while True:
+            l = f.read(BUFFER_SIZE)
+            while (l):
+                self.sock.send(l)
+                #print('Sent ',repr(l))
+                l = f.read(BUFFER_SIZE)
+            if not l:
+                f.close()
+                self.sock.close()
+                break
+
+
+def sha256sum(t):
+    return hashlib.sha256(t).hexdigest()
+
+con = lite.connect('testaccounts.db')
 
 cur = con.cursor()
 cur.execute
-con.create_function("md5", 1, md5sum)
+con.create_function("sha256", 1, sha256sum)
 
-with con:
+while True:
 
     cur = con.cursor()
 
-    cur.execute("DROP TABLE IF EXISTS Cars")
+    cur.execute("DROP TABLE IF EXISTS Accounts")
 
-    cur.execute("CREATE TABLE IF NOT EXISTS Cars(Id INT, Name TEXT, Price INT)")
-    cur.executemany("INSERT INTO Cars VALUES(?, ?, ?)", cars)
-    cur.execute("INSERT INTO Cars VALUES(9, 'Bmw', 220000)")
+    cur.execute("CREATE TABLE IF NOT EXISTS Accounts(Id TEXT PRIMARY KEY NOT NULL, Password TEXT, Name TEXT NOT NULL, Created NOT NULL, Batches, Directories)")
+    print("Welcome to VAST. ")
+    x = sha256sum('chuck')
+    cur.execute("INSERT INTO Accounts (Id, Password, Name, Created)" +
+                "VALUES('HIII', sha256('jerry'), 'chucky berry', 220000)")
+    cur.execute("INSERT INTO Accounts (Id, Password, Name, Created) VALUES('HII', sha256('hi'), 'chky berry', 2200)")
+
+    con.commit()
+    break
+con.close()
