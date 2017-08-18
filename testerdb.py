@@ -23,7 +23,7 @@ class ClientThread(Thread):
 
     def run(self):
         filename='mytext.txt'
-        f = open(filename,'rb')
+        f = open("tst.txt",'rb')
         while True:
             l = f.read(BUFFER_SIZE)
             while (l):
@@ -34,6 +34,23 @@ class ClientThread(Thread):
                 f.close()
                 self.sock.close()
                 break
+
+tcpsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+tcpsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+tcpsock.bind((TCP_IP, TCP_PORT))
+threads = []
+
+while True:
+    tcpsock.listen(5)
+    print "Waiting for incoming connections..."
+    (conn, (ip,port)) = tcpsock.accept()
+    print 'Got connection from ', (ip,port)
+    newthread = ClientThread(ip,port,conn)
+    newthread.start()
+    threads.append(newthread)
+
+for t in threads:
+    t.join()
 
 
 def sha256sum(t):
