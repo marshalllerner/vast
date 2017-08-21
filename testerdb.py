@@ -8,6 +8,37 @@ import hashlib
 from threading import Thread
 from SocketServer import ThreadingMixIn
 
+
+def sha256sum(t):
+    return hashlib.sha256(t).hexdigest()
+
+con = lite.connect('accounts.db')
+
+cur = con.cursor()
+cur.execute
+con.create_function("sha256", 1, sha256sum)
+
+while True:
+
+    cur = con.cursor()
+
+    cur.execute("DROP TABLE IF EXISTS Accounts")
+
+    cur.execute("CREATE TABLE IF NOT EXISTS Accounts(Username TEXT PRIMARY KEY NOT NULL, Password TEXT, Name TEXT NOT NULL, Created NOT NULL, Batches, Results, System)")
+    print("Welcome to VAST. ")
+    def date(): return cur.execute("SELECT date('now')")
+    #examples for creating an account
+    cur.execute("INSERT INTO Accounts (Username, Password, Name, Created)" +
+               "VALUES('marshalllerner', sha256('marshall'), 'Marshall Lerner', date())")
+#    cur.execute("INSERT INTO Accounts (Id, Password, Name, Created) VALUES('HII', sha256('hi'), 'chky berry', 2200)")
+
+    con.commit()
+    break
+con.close()
+
+
+
+
 TCP_IP = 'localhost'
 TCP_PORT = 9001
 BUFFER_SIZE = 1023
@@ -51,31 +82,3 @@ while True:
 
 for t in threads:
     t.join()
-
-
-def sha256sum(t):
-    return hashlib.sha256(t).hexdigest()
-
-con = lite.connect('testaccounts.db')
-
-cur = con.cursor()
-cur.execute
-con.create_function("sha256", 1, sha256sum)
-
-while True:
-
-    cur = con.cursor()
-
-    cur.execute("DROP TABLE IF EXISTS Accounts")
-
-    cur.execute("CREATE TABLE IF NOT EXISTS Accounts(Id TEXT PRIMARY KEY NOT NULL, Password TEXT, Name TEXT NOT NULL, Created NOT NULL, Batches, Results)")
-    print("Welcome to VAST. ")
-
-    #examples for creating an account
-    cur.execute("INSERT INTO Accounts (Id, Password, Name, Created)" +
-                "VALUES('HIII', sha256('jerry'), 'chucky berry', 220000)")
-    cur.execute("INSERT INTO Accounts (Id, Password, Name, Created) VALUES('HII', sha256('hi'), 'chky berry', 2200)")
-
-    con.commit()
-    break
-con.close()
