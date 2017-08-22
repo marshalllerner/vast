@@ -52,6 +52,7 @@ img.avatar {
 
 .container {
     padding: 16px;
+    margin-top: 30px;
 }
 
 span.psw {
@@ -74,13 +75,19 @@ span.psw {
 {% extends "flash.html" %}
 {% block body %}
   {% if session['logged_in'] %}
-  <p>You're logged in already!</p>
-  {% else %}
-<h2>Login Form</h2>
-
-<form action="/login" method="post">
-
   <div class="container">
+  <p>You're logged in already!</p>
+    <a href="/">
+    <button type="button" class="cancelbtn">Go Home</button> </a>
+  </div>
+  {% else %}
+  <div class="container">
+
+    <h2>Login Form</h2>
+
+    <form action="/login" method="post">
+
+
     <label><b>Username</b></label>
     <input type="text" placeholder="Enter Username" name="username" required>
 
@@ -96,13 +103,8 @@ span.psw {
       <a href="/signup">
         <button type="button" class="signupbtn">Sign Up</button>
       </a>
+      <span class="psw">Forgot <a href="/forgotlogin">password?</a></span>
     </span>
-  </div>
-
-  <div class="container" style="background-color:#f1f1f1">
-    <a href="/">
-    <button type="button" class="cancelbtn">Cancel</button> </a>
-    <span class="psw">Forgot <a href="/forgotlogin">password?</a></span>
   </div>
 </form>
 

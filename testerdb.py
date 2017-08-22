@@ -24,12 +24,12 @@ while True:
 
     cur.execute("DROP TABLE IF EXISTS Accounts")
 
-    cur.execute("CREATE TABLE IF NOT EXISTS Accounts(Username TEXT PRIMARY KEY NOT NULL, Password TEXT, Name TEXT NOT NULL, Created NOT NULL, Batches, Results, System)")
+    cur.execute("CREATE TABLE IF NOT EXISTS Accounts(Username TEXT PRIMARY KEY NOT NULL, Password TEXT, Email TEXT NOT NULL, Name TEXT NOT NULL, Created NOT NULL, Batches, Results, System)")
     print("Welcome to VAST. ")
     def date(): return cur.execute("SELECT date('now')")
     #examples for creating an account
-    cur.execute("INSERT INTO Accounts (Username, Password, Name, Created)" +
-               "VALUES('marshalllerner', sha256('marshall'), 'Marshall Lerner', date())")
+    cur.execute("INSERT INTO Accounts (Username, Password, Email, Name, Created)" +
+               "VALUES('marshalllerner', sha256('marshall'),'marshallhlerner@gmail.com', 'Marshall Lerner', date())")
 #    cur.execute("INSERT INTO Accounts (Id, Password, Name, Created) VALUES('HII', sha256('hi'), 'chky berry', 2200)")
 
     con.commit()

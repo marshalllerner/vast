@@ -1,18 +1,46 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>Welcome to VAST</title>
-</head>
+<style>
+.navbar {
+  overflow: hidden;
+  background-color: #BF5700;
+  position: fixed;
+  top: 0;
+  width: 100%;
+}
+
+.navbar a {
+  float: left;
+  display: block;
+  color: #f2f2f2;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+  font-size: 17px;
+}
+
+.container {
+    padding: 16px;
+    margin-top: 30px;
+}
+</style>
+<title> VAST </title>
+<html>
 <body>
+<div class="navbar">
+  <a href="/">Home</a>
+  <a href="/logout">Sign out</a>
+</div>
+
+<div class="container">
+  <head>
+    <title>Welcome to VAST</title>
+  </head>
+
     <ul id="navigation">
     {% for item in navigation %}
         <li><a href="{{ item.href }}">{{ item.caption }}</a></li>
     {% endfor %}
     </ul>
-
-    <h1>My Webpage</h1>
-    {{ a_variable }}
-
-    {# a comment #}
+</div>
 </body>
 </html>
