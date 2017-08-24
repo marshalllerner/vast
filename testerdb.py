@@ -24,7 +24,7 @@ while True:
 
     cur.execute("DROP TABLE IF EXISTS Accounts")
 
-    cur.execute("CREATE TABLE IF NOT EXISTS Accounts(Username TEXT PRIMARY KEY NOT NULL, Password TEXT, Email TEXT NOT NULL, Name TEXT NOT NULL, Created NOT NULL, Batches, Results, System)")
+    cur.execute("CREATE TABLE IF NOT EXISTS Accounts(Username TEXT PRIMARY KEY NOT NULL, Password TEXT, Email TEXT NOT NULL, Name TEXT NOT NULL, Created NOT NULL, Batches, Results, BOINCauth)")
     print("Welcome to VAST. ")
     def date(): return cur.execute("SELECT date('now')")
     #examples for creating an account

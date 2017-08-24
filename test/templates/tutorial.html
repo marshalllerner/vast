@@ -38,7 +38,14 @@
     {% extends "flash.html" %}
     {% block body %}
   </div>
-
+    <h1>Upload a New Job and its Input Files </h1>
+    <h2> If you have never done this before, please follow the <a href="/tutorial"> tutorial </a></h2>
+    <form method=post enctype=multipart/form-data>
+      <p><input type=file name=file>
+        <label><b>Is this a job file (not a job dependent file)?</b></label>
+        <input type=checkbox name=isJobFile checked>
+         <input type=submit value=Upload></p>
+    </form>
   <div class="container">
     <h2>User values:</h2>
     <pre>

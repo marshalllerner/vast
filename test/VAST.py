@@ -1,14 +1,23 @@
 from flask import Flask, url_for, render_template, request, make_response
 from flask import flash, session, g, redirect
+from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
 import hashlib
 import json
 import sqlite3 as lite
 
-app = Flask('test')
+app = Flask('VAST')
 app.secret_key = os.urandom(12)
+UPLOAD_FOLDER='./uploaded_files'
+NOT_ALLOWED_EXTENSIONS = set(['html', 'php'])
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 DATABASE = 'accounts.db'
+
+def allowed_file(filename):
+    return not '.' in filename or \
+           filename.rsplit('.', 1)[1].lower() not in NOT_ALLOWED_EXTENSIONS
+
 def get_db():
   db = getattr(g, '_database', None)
   if db is None:
@@ -90,7 +99,7 @@ def valid_login(usr, psw):
   else:
     return True
 
-@app.route('/user')
+@app.route('/user', methods=['GET'])
 def user():
   if not session.get('logged_in'):
     return redirect(url_for('login'))
@@ -100,10 +109,42 @@ def user():
   out = json.dumps(user, sort_keys=True, indent=4, separators=(',', ': '))
   return render_template('user.html', out=out)
 
+@app.route('/upload')
+def upload_file():
+    if not session.get('logged_in'):
+      return redirect(url_for('login'))
+    if request.method == "GET":
+        return render_template('upload.html')
+    # check if the post request has the file part
+    if 'file' not in request.files:
+        flash('No file')
+        return redirect(request.url)
+    file = request.files['file']
+    # if user does not select file, browser also
+    # submit a empty part without filename
+    if file.filename == '':
+        flash('No selected file')
+        return redirect(request.url)
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        flash('uploaded ' + filename)
+        print
+        print filename
+        print
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        return redirect(url_for('user'))
+
+
 @app.route("/logout")
 def logout():
   session.clear()
   return redirect(url_for('index'))
+
+@app.route("/tutorial")
+def tutorial():
+  if not session.get('logged_in'):
+    return redirect(url_for('login'))
+  return render_template("tutorial.html")
 
 
 @app.route("/signup", methods=['GET','POST'])
