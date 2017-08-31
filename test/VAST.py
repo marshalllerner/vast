@@ -1,66 +1,45 @@
 from flask import Flask, url_for, render_template, request, make_response
-from flask import flash, session, g, redirect
+from flask import flash, session, g, redirect, send_file
+from flask_pymongo import PyMongo
+from pymongo import MongoClient
 from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
-import hashlib
+import bcrypt
 import json
 import sqlite3 as lite
+from bson import BSON
+from bson import json_util
+from website_vcsub import BOINCupload, md5
 
 app = Flask('VAST')
-app.secret_key = os.urandom(12)
+app.config['MONGO1_DBNAME'] = 'accountsdb'
+mongo = PyMongo(app, config_prefix='MONGO1')
+app.secret_key = os.urandom(12) #TODO not sure if this is a permanent solution
 UPLOAD_FOLDER='./uploaded_files'
 NOT_ALLOWED_EXTENSIONS = set(['html', 'php'])
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 DATABASE = 'accounts.db'
 
+
+# TODO: Externally Visible Server
+# If you run the server you will notice that the server is only accessible from
+#  your own computer, not from any other in the network. This is the default
+#  because in debugging mode a user of the application can execute arbitrary
+#  Python code on your computer.
+# If you have the debugger disabled or trust the users on your network, you can
+# make the server publicly available simply by adding --host=0.0.0.0 to the
+# command line:
+#
+# flask run --host=0.0.0.0
+#
+# This tells your operating system to listen on all public IPs.
+
+
 def allowed_file(filename):
     return not '.' in filename or \
            filename.rsplit('.', 1)[1].lower() not in NOT_ALLOWED_EXTENSIONS
 
-def get_db():
-  db = getattr(g, '_database', None)
-  if db is None:
-    db = g._database = lite.connect(DATABASE)
-  db.row_factory = lite.Row
-  return db
-
-  #def make_dicts(cursor, row):
-    #return dict((cursor.description[idx][0], value)
-    #            for idx, value in enumerate(row))
-    # db.row_factory = make_dicts
-
-def insert(table, fields=(), values=()):
-    # g.db is the database connection
-    db = get_db()
-    cur = db.cursor()
-    query = 'INSERT INTO %s (%s) VALUES (%s)' % (
-        table,
-        ', '.join(fields),
-        ', '.join(['?'] * len(values))
-    )
-    cur.execute(query, values)
-    db.commit()
-    id = cur.lastrowid
-    cur.close()
-    return id
-
-def query_db(query, args=(), one=False):
-  cur = get_db().cursor()
-  cur.execute(query, args)
-  r = [dict((cur.description[i][0], value) \
-       for i, value in enumerate(row)) for row in cur.fetchall()]
-  cur.close()
-  return (r[0] if r else None) if one else r
-
-#cur = get_db().execute(query, args)
-#rv = cur.fetchall()
-#cur.close()
-#return (rv[0] if rv else None) if one else rv
-
-
-def sha256sum(t):
-    return hashlib.sha256(t).hexdigest()
 
 @app.teardown_appcontext
 def close_connection(exception):
@@ -68,70 +47,179 @@ def close_connection(exception):
     if db is not None:
         db.close()
 
-@app.route("/")
+@app.route("/", methods=['GET','POST'])
 def index():
   if not session.get('logged_in'):
     return redirect(url_for('login'))
     #render_template('login.html')
   else:
     return redirect(url_for('user'))
+@app.route('/forgotLogin')
+def forgot_login():
+    return "Hello World" #TODO have the password be changed
 
 @app.route('/login', methods=['GET','POST'])
 def login():
   if request.method == 'POST':
-      if valid_login(request.form['username'],
-                      sha256sum(request.form['password'])):
-        session['logged_in'] = True
-        session['loginName'] = request.form['username']
-        return redirect(url_for('user'))
-    #log_the_user_in(request.form['username'])
-      else:
-        flash('These credentials were not found. Please try again')
+    users = mongo.db.users
+    login_user = users.find_one({'Username' : request.form['username']})
+    if login_user:
+        if bcrypt.hashpw(request.form['password'].encode('utf-8'), login_user['Password'].encode('utf-8')) == login_user['Password'].encode('utf-8'):
+            session['logged_in'] = True
+            session['loginName'] = request.form['username']
+            return redirect(url_for('user'))
+
+    flash('These credentials were not found. Please try again')
   return render_template('login.html')
 
-def valid_login(usr, psw):
-  user = query_db('select * from Accounts where Username = ?',
-                  [usr], one=True)
-  if user is None:
-    return False
-  elif user['Password'] != psw:
-    return False
-  else:
-    return True
 
 @app.route('/user', methods=['GET'])
 def user():
   if not session.get('logged_in'):
     return redirect(url_for('login'))
-  user = query_db('select * from Accounts where Username = ?',
-                    [session['loginName']], one=True)
+  users = mongo.db.users
+  user = users.find_one({'Username': session['loginName']})
   user.pop('Password', None)
-  out = json.dumps(user, sort_keys=True, indent=4, separators=(',', ': '))
+  user.pop('_id', None)
+  out = json.dumps(user, sort_keys=True, indent=4, separators=(',', ': '), default=json_util.default)
   return render_template('user.html', out=out)
 
-@app.route('/upload')
+
+# @app.route('/uploadtest', methods=['GET', 'POST'])
+# def upload_test():
+#     print "nay"
+#     if request.method == 'POST':
+#         print "yeet"
+#         # check if the post request has the file part
+#         if 'jobFile' not in request.files:
+#             flash('No file part')
+#             return redirect(request.url)
+#             print "failed 1"
+#         dafiles = request.files.getlist('inputFiles[]')
+#         print dafiles
+#         print len(dafiles)
+#         i = 0
+#         for file in dafiles:
+#             print "loop"
+#             # if user does not select file, browser also
+#             # submit a empty part without filename
+#             if file.filename == '':
+#                 flash('No selected file')
+#                 return redirect(request.url)
+#                 print "failed 2"
+#             if file and allowed_file(file.filename):
+#                 print "yay made it"
+#                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], "hi" + str(i)))
+#                 i = i + 1
+#         return redirect(url_for('user'))
+#
+#     return '''
+#     <!doctype html>
+#     <title>Upload new File</title>
+#     <h1>Upload new File</h1>
+#     <form method=post enctype=multipart/form-data>
+#       <p><input type=file name=file>
+#          <input type=submit value=Upload>
+#     </form>
+#     '''
+
+
+@app.route('/upload', methods=['GET','POST'])
 def upload_file():
     if not session.get('logged_in'):
       return redirect(url_for('login'))
     if request.method == "GET":
         return render_template('upload.html')
     # check if the post request has the file part
-    if 'file' not in request.files:
+    if 'jobFile' not in request.files:
         flash('No file')
         return redirect(request.url)
-    file = request.files['file']
+    afile = request.files['jobFile']
     # if user does not select file, browser also
     # submit a empty part without filename
-    if file.filename == '':
+    if afile.filename == '':
         flash('No selected file')
         return redirect(request.url)
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        flash('uploaded ' + filename)
-        print
-        print filename
-        print
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    if afile and allowed_file(afile.filename):
+        users = mongo.db.users
+        files = mongo.db['__files__']
+        i = 0
+
+        user = users.find_one({'Username': session.get('loginName')})
+        boincCode = user['BOINCauth']
+        if boincCode == "":
+            #TODO get the boinc code from the user and then store it in the users mongoDB
+            hi = "1"
+        inputFiles = request.files.getlist('inputFiles[]')
+
+        # TODO: BOINCupload(session.get('loginName'), boincCode, afile, inputFiles) #TODO add this back
+        jobName = secure_filename(afile.filename)
+        afile.save(os.path.join(app.config['UPLOAD_FOLDER'], jobName))
+        hashName = md5(os.path.join(app.config['UPLOAD_FOLDER'], afile.filename))
+        jobExists = files.find_one({'HashName': hashName})
+        if jobExists is None:
+            flash("uploaded " + afile.filename)
+            os.rename(os.path.join(app.config['UPLOAD_FOLDER'], jobName), os.path.join(app.config['UPLOAD_FOLDER'], hashName))
+            files.insert_one({
+            #    "File": afile,
+                "SecureName": jobName,
+                "HashName": hashName,
+                "NormalName": afile.filename,
+                "Users": [session.get('loginName')],
+                "UploadedFirst": str(datetime.now())
+            })
+        else:
+            flash(afile.filename + " was already found on this server")
+            os.remove("uploaded_files/" + jobName)
+            files.update(
+            { "HashName": hashName },
+            { '$addToSet': {"Users": session.get('loginName')}
+            })
+
+
+
+        inputFileNames = []
+        for job in inputFiles:
+            if allowed_file(job.filename):
+                jobName = secure_filename(job.filename)
+                job.save(os.path.join(app.config['UPLOAD_FOLDER'], jobName))
+                hashName = md5(os.path.join(app.config['UPLOAD_FOLDER'],job.filename))
+                inputFileNames.append(hashName)
+                inputFileExists = files.find_one({'HashName' : hashName})
+                if inputFileExists is None:
+                    flash("uploaded " + job.filename)
+                    os.rename(os.path.join(app.config['UPLOAD_FOLDER'], jobName), os.path.join(app.config['UPLOAD_FOLDER'], hashName))
+                    files.insert_one({
+                    #    "File": job,
+                        "SecureName": jobName,
+                        "HashName": hashName,
+                        "NormalName": job.filename,
+                        "Users": [session.get('loginName')],
+                        "UploadedFirst": str(datetime.now())
+                    })
+                else:
+                    flash(job.filename + " was already found on this server")
+                    os.remove("uploaded_files/" + jobName)
+                    files.update(
+                    {"HashName": hashName},
+                    {'$addToSet': {
+                    "Users": session.get('loginName')}
+                    })
+
+
+        users.update(
+        {"Username": session.get("loginName")},
+        {'$push': {
+        "Batches": {
+            "jobFile": afile.filename,
+            "JobFileHash": jobName,
+            "InputFiles": inputFileNames,
+            "Created": str(datetime.now()),
+            "LastUpdated": str(datetime.now()),
+            "Active": "Ready",
+            "Results": []
+        }
+        }})
         return redirect(url_for('user'))
 
 
@@ -139,6 +227,14 @@ def upload_file():
 def logout():
   session.clear()
   return redirect(url_for('index'))
+
+@app.route("/downloadTutorial")
+def downloadInputFileFinder():
+  if not session.get('logged_in'):
+    return redirect(url_for('login'))
+  dir = os.path.dirname(__file__)
+  filename = os.path.join(dir, '../getInputFiles.py')
+  return send_file("getInputFiles.py", as_attachment=True)
 
 @app.route("/tutorial")
 def tutorial():
@@ -150,29 +246,21 @@ def tutorial():
 @app.route("/signup", methods=['GET','POST'])
 def signup():
   if request.method == 'POST':
-      if valid_signup(request.form['username']):
-        session['logged_in'] = True
-        session['loginName'] = request.form['username']
-        insert('Accounts', ('Username', 'Password', 'Name', 'Email', 'Created'),
-               (request.form['username'], sha256sum(request.form['password']),
-               request.form['name'], request.form['email'], str(datetime.now())))
-        return redirect(url_for('user'))
+      users = mongo.db.users
+      existing_user = users.find_one({'Username': request.form['username']})
+      if existing_user is None:
+          hashpass = bcrypt.hashpw(request.form['password'].encode('utf-8'), bcrypt.gensalt())
+          users.insert_one({
+              "BOINCauth": "",
+              "Batches": [],
+              "Created": str(datetime.now()),
+              "Email": request.form['email'],
+              "Name": request.form['name'],
+              "Password": hashpass,
+              "Results": [],
+              "Username": request.form['username']
+          })
+          return redirect(url_for('user'))
       else:
-        flash('These credentials were already found. Please try a different username')
+         flash('These credentials were already found. Please try a different username')
   return render_template('signup.html')
-
-
-def valid_signup(usr):
-  user = query_db('select * from Accounts where Username = ?',
-                  [usr], one=True)
-  if user is None:
-    return True
-  else:
-    return False
-  #return "Hello World"
-
-#with app.test_request_context():
-  #url_for('index')
-  #url_for('login')
- # url_for('login', chuck='hi')
-#  url_for('profile', username='Marshall Lerner')

@@ -2,6 +2,22 @@
 
 <style>
 
+.signupbtn {
+    width: auto;
+    padding: 10px 18px;
+    background-color: #BF5700;
+}
+
+button {
+    background-color: #BF5700;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+}
+
 .navbar {
   overflow: hidden;
   background-color: #BF5700;
@@ -25,7 +41,7 @@
     margin-top: 30px;
 }
 </style>
-<title>VAST User</title>
+<title>VAST Upload Tutorial</title>
 <html>
 <body>
   <div class="navbar">
@@ -38,19 +54,47 @@
     {% extends "flash.html" %}
     {% block body %}
   </div>
-    <h1>Upload a New Job and its Input Files </h1>
-    <h2> If you have never done this before, please follow the <a href="/tutorial"> tutorial </a></h2>
-    <form method=post enctype=multipart/form-data>
-      <p><input type=file name=file>
-        <label><b>Is this a job file (not a job dependent file)?</b></label>
-        <input type=checkbox name=isJobFile checked>
-         <input type=submit value=Upload></p>
-    </form>
-  <div class="container">
-    <h2>User values:</h2>
-    <pre>
-      <div id="output">{{out}}</div>
-    </pre>
-  </div>
+    <h1>Vast Upload Tutorial </h1>
+    <div class="container">
+      <ol>
+        <li>
+          <h4>&nbsp;The first thing you need to do is download the file here:</h4>
+          <a href="/downloadTutorial">
+            <button type="submit" class="signupbtn">Download</button>
+          </a>
+        </li>
+        <li>
+          <h4>&nbsp;Once downloaded, move the "inputFiles.py" into the same directory as your job file</h4>
+        </li>
+        <li>
+          <h4>&nbsp;In the command line, navigate to the directory where both are contained and then type "./inputFiles.py &lt;job_file&gt;" where &lt;job_file&gt; is the job file that will be parsed.</h4>
+          <ol>
+            <li>
+              <h4>The job_file will be parsed for valid jobs able to be offloaded to BOINC</h4>
+            </li>
+            <li>
+              <h4>If that job is dependent on a file in order to be run, the inputFiles will create a new directory called "inputFiles" that will now contain a copy of the file that the job would need.</h4>
+            </li>
+            <li>
+              <h4>At the end, all of the input files needed to run the offloaded jobs will be in the new inputFiles directory.</h4>
+            </li>
+          </ol>
+        </li>
+        <li>
+          <h4>&nbsp;On the upload page, import the job file where it says "Job File" and import all of the input Files (in the directory "inputFiles") where it says "Input Files"</h4>
+          <ol>
+            <li>
+              <h4>&nbsp;If there is more than one input file I recommend clicking the top file, scrolling all the way to the lowest file and shift-click on that file, which will highlight all of the input files and upload them all at once</h4>
+            </li>
+          </ol>
+        </li>
+        <li>
+          <h4>Click the "Upload" button.</h4>
+        </li>
+      </ol>
+      <p>&nbsp;</p>
+      <p><strong>&nbsp;</strong></p>
+
+    </div>
 {% endblock %}
 </html>

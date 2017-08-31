@@ -39,7 +39,7 @@
   </div>
     <h1>Upload a New Job and its Input Files </h1>
     <h2> If you have never done this before, please follow the <a href="/tutorial"> tutorial </a></h2>
-    <form action="/login" method=post enctype=multipart/form-data>
+    <form action="{{ url_for('upload_file') }}" method=post enctype=multipart/form-data>
       <p>
         <label><b>Job File</b></label>
         <input type=file name=jobFile required>
