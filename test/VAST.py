@@ -17,7 +17,6 @@ app.config['MONGO1_DBNAME'] = 'accountsdb'
 mongo = PyMongo(app, config_prefix='MONGO1')
 app.secret_key = os.urandom(12) #TODO not sure if this is a permanent solution
 UPLOAD_FOLDER='./uploaded_files'
-NOT_ALLOWED_EXTENSIONS = set(['html', 'php'])
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 DATABASE = 'accounts.db'
 
@@ -35,7 +34,8 @@ DATABASE = 'accounts.db'
 #
 # This tells your operating system to listen on all public IPs.
 
-
+#check if the file is allowed and not trying to hack the server
+NOT_ALLOWED_EXTENSIONS = set(['html', 'php'])
 def allowed_file(filename):
     return not '.' in filename or \
            filename.rsplit('.', 1)[1].lower() not in NOT_ALLOWED_EXTENSIONS
@@ -47,6 +47,7 @@ def close_connection(exception):
     if db is not None:
         db.close()
 
+#When the user first goes to the website
 @app.route("/", methods=['GET','POST'])
 def index():
   if not session.get('logged_in'):
@@ -54,17 +55,22 @@ def index():
     #render_template('login.html')
   else:
     return redirect(url_for('user'))
+
+#If the user clicks the "forgot password" on the login page
 @app.route('/forgotLogin')
 def forgot_login():
     return "Hello World" #TODO have the password be changed
 
+# If it is a post request, the function takes the post request and
+# checks if the user is already in the user database
 @app.route('/login', methods=['GET','POST'])
 def login():
   if request.method == 'POST':
     users = mongo.db.users
     login_user = users.find_one({'Username' : request.form['username']})
     if login_user:
-        if bcrypt.hashpw(request.form['password'].encode('utf-8'), login_user['Password'].encode('utf-8')) == login_user['Password'].encode('utf-8'):
+        if bcrypt.hashpw(request.form['password'].encode('utf-8'),
+                        login_user['Password'].encode('utf-8')) == login_user['Password'].encode('utf-8'):
             session['logged_in'] = True
             session['loginName'] = request.form['username']
             return redirect(url_for('user'))
@@ -72,7 +78,8 @@ def login():
     flash('These credentials were not found. Please try again')
   return render_template('login.html')
 
-
+# prints the JSON database of a user in the users database (not including
+# the password and the _id, which mongdb automatically includes)
 @app.route('/user', methods=['GET'])
 def user():
   if not session.get('logged_in'):
@@ -123,11 +130,11 @@ def user():
 #     </form>
 #     '''
 
-
+#This is the webpage for when a user uploads a file and its inputFiles to the server
 @app.route('/upload', methods=['GET','POST'])
 def upload_file():
     if not session.get('logged_in'):
-      return redirect(url_for('login'))
+        return redirect(url_for('login'))
     if request.method == "GET":
         return render_template('upload.html')
     # check if the post request has the file part
@@ -142,20 +149,24 @@ def upload_file():
         return redirect(request.url)
     if afile and allowed_file(afile.filename):
         users = mongo.db.users
-        files = mongo.db['__files__']
-        i = 0
-
+        files = mongo.db.files
+        # get the BOINC authorization code from the user profile
         user = users.find_one({'Username': session.get('loginName')})
         boincCode = user['BOINCauth']
         if boincCode == "":
             #TODO get the boinc code from the user and then store it in the users mongoDB
             hi = "1"
+        # get the input files
         inputFiles = request.files.getlist('inputFiles[]')
-
         # TODO: BOINCupload(session.get('loginName'), boincCode, afile, inputFiles) #TODO add this back
         jobName = secure_filename(afile.filename)
+        # this is the only way I could get it to work. I would have to save the
+        # file and then hash the file and then check if the hashname is already
+        # in the files collection and if it is then remove the file, otherwise
+        # it will add the file metadata to the files collection
         afile.save(os.path.join(app.config['UPLOAD_FOLDER'], jobName))
         hashName = md5(os.path.join(app.config['UPLOAD_FOLDER'], afile.filename))
+        jobHashName = hashName
         jobExists = files.find_one({'HashName': hashName})
         if jobExists is None:
             flash("uploaded " + afile.filename)
@@ -175,9 +186,8 @@ def upload_file():
             { "HashName": hashName },
             { '$addToSet': {"Users": session.get('loginName')}
             })
-
-
-
+        # this is the same procedure as the job file comment above, except this
+        # runs through the input files and also appends their names to an array
         inputFileNames = []
         for job in inputFiles:
             if allowed_file(job.filename):
@@ -206,13 +216,13 @@ def upload_file():
                     "Users": session.get('loginName')}
                     })
 
-
+        # updates the users collection to include the batch that was just uploaded
         users.update(
         {"Username": session.get("loginName")},
         {'$push': {
         "Batches": {
             "jobFile": afile.filename,
-            "JobFileHash": jobName,
+            "JobFileHash": jobHashName,
             "InputFiles": inputFileNames,
             "Created": str(datetime.now()),
             "LastUpdated": str(datetime.now()),
@@ -222,12 +232,13 @@ def upload_file():
         }})
         return redirect(url_for('user'))
 
-
+# clears the user from the session
 @app.route("/logout")
 def logout():
   session.clear()
   return redirect(url_for('index'))
 
+#the function is pressed when the user clicks the tutorial on the upload page
 @app.route("/downloadTutorial")
 def downloadInputFileFinder():
   if not session.get('logged_in'):
@@ -236,13 +247,16 @@ def downloadInputFileFinder():
   filename = os.path.join(dir, '../getInputFiles.py')
   return send_file("getInputFiles.py", as_attachment=True)
 
+# the tutorial function
 @app.route("/tutorial")
 def tutorial():
   if not session.get('logged_in'):
     return redirect(url_for('login'))
   return render_template("tutorial.html")
 
-
+# the function called when a user signs up. If it is a post request, the user
+# database is checked to see if the username is already used, and if so, makes
+# the user signing up to try a new username. Otherwise, it adds
 @app.route("/signup", methods=['GET','POST'])
 def signup():
   if request.method == 'POST':
